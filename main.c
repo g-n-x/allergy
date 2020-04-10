@@ -1,26 +1,44 @@
+/*
+ * everything was made based on these rules:
+ * 1. an animation spritesheet must have only 1 row
+ * 2. all sprites must be squares (at least for now)
+ */
 #include<SDL2/SDL.h>
 #include<SDL2/SDL_image.h>
 #include<SDL2/SDL_ttf.h>
+
+#define tex_load_failed(condition) \
+	if(condition){SDL_Log("failed to load media: %s",IMG_GetError());code=EXIT_FAIL;}
 
 enum EXIT_CODE {
 	EXIT_FAIL,
 	EXIT_OK
 };
 
-static char* window_title = "cool title";
+static char* window_title = "sli";
 static const int SWIDTH = 1280;
 static const int SHEIGHT = 720;
 static const int TARGET_FPS = 1000 / 60; /* second per 60 frames */
+static const int GAME_SCALE = 5; /* multiply every render' scale by 5 */
 
 static SDL_Renderer* renderer = NULL;
 static SDL_Window* window = NULL;
 static SDL_Surface* icon = NULL;
 
 /* textures */
+static SDL_Texture* sli_atlas = NULL;
 static SDL_Texture* bg_test = NULL;
 
+/* rectangle arrays */
+static SDL_Rect sli_idle[2];
+static SDL_Rect sli_walk[4];
+static SDL_Rect sli_jump[7];
+
+/* functions */
 static int init(void);
 static SDL_Texture* load_texture(const char* path);
+static inline void load_rectangle(SDL_Rect* r, int w, int sz); /* used to define the SDL_Rect vars */
+static void load_rects(void); /* used to group the load_rectangle() */
 static int load_media(void);
 static void deinit(void);
 
@@ -34,7 +52,6 @@ init(void){
 	if(SDL_Init(SDL_INIT_VIDEO) != 0) goto FAIL_INIT;
 	if(!(IMG_Init(img_flags) & img_flags)) goto FAIL_IMG;
 	if(TTF_Init() == -1) goto FAIL_TTF;
-
 
 	/* create window */
 	window = SDL_CreateWindow(window_title,
@@ -70,6 +87,30 @@ FAIL_INIT:
 	return code;
 }
 
+inline void load_rectangle(SDL_Rect* r, int w, int sz){
+	/* r is the rect to be modifying */
+	/* w speficy width of one frame in the atlas */
+	/* sz is for the array size */
+
+	for(int i = 0; i < sz; i++){
+		r[i].x += w * i;
+		r[i].y = 0;
+		r[i].w = w;
+		r[i].h = w;
+	}
+}
+
+void
+load_rects(void){
+	int i;
+	/* sli_idle 2 frames */
+	load_rectangle(sli_idle, 16, sizeof(sli_idle));
+	/* sli_walk 4 frames */
+	load_rectangle(sli_walk, 16, sizeof(sli_walk));
+	/* sli_jump 7 frames */
+	load_rectangle(sli_jump, 16, sizeof(sli_jump));
+}
+
 SDL_Texture*
 load_texture(const char* path){
 	SDL_Texture* new_tex = NULL;
@@ -87,18 +128,17 @@ int
 load_media(void){
 	int code = EXIT_OK;
 
+	/* icon */
 	icon = IMG_Load("res/test/icon.png");
-	if(!icon){
-		SDL_Log("failed to load icon: %s", IMG_GetError());
-		code = EXIT_FAIL;
-	} else
+	tex_load_failed(!icon) else
 		SDL_SetWindowIcon(window, icon);
 
+	/* sli stlas */
+	sli_atlas = load_texture("res/sli-atlas.png");
+	tex_load_failed(!sli_atlas);
+
 	bg_test = load_texture("res/test/wpp_test.jpg");
-	if(!bg_test){
-		SDL_Log("failed to load media: %s", IMG_GetError());
-		code = EXIT_FAIL;
-	}
+	tex_load_failed(!bg_test);
 
 	return code;
 }
@@ -142,10 +182,11 @@ int main(int argc, char* argv[]){
 		/* render onto the framebuffer */
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer, bg_test, NULL, NULL);
+
 		/* flip framebuffer */
 		SDL_RenderPresent(renderer);
 
-		/* delta frame */
+		/* delta frame (actually, no) */
 		delta = SDL_GetTicks() - delta;
 		if(delta < TARGET_FPS)
 			SDL_Delay(TARGET_FPS - delta);
