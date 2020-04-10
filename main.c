@@ -10,10 +10,11 @@ enum EXIT_CODE {
 static char* window_title = "cool title";
 static const int SWIDTH = 1280;
 static const int SHEIGHT = 720;
-static const int TARGET_FPS = 1000 / 60;
+static const int TARGET_FPS = 1000 / 60; /* second per 60 frames */
 
 static SDL_Renderer* renderer = NULL;
 static SDL_Window* window = NULL;
+static SDL_Surface* icon = NULL;
 
 /* textures */
 static SDL_Texture* bg_test = NULL;
@@ -27,13 +28,13 @@ int
 init(void){
 	int code = EXIT_OK;
 	Uint32 img_flags = IMG_INIT_PNG | IMG_INIT_JPG;
-	Uint32 render_flags = SDL_RENDERER_ACCELERATED
-		| SDL_RENDERER_PRESENTVSYNC;
+	Uint32 render_flags = SDL_RENDERER_ACCELERATED;
 
 	/* sdl subsystems */
 	if(SDL_Init(SDL_INIT_VIDEO) != 0) goto FAIL_INIT;
 	if(!(IMG_Init(img_flags) & img_flags)) goto FAIL_IMG;
 	if(TTF_Init() == -1) goto FAIL_TTF;
+
 
 	/* create window */
 	window = SDL_CreateWindow(window_title,
@@ -86,9 +87,16 @@ int
 load_media(void){
 	int code = EXIT_OK;
 
+	icon = IMG_Load("res/test/icon.png");
+	if(!icon){
+		SDL_Log("failed to load icon: %s", IMG_GetError());
+		code = EXIT_FAIL;
+	} else
+		SDL_SetWindowIcon(window, icon);
+
 	bg_test = load_texture("res/test/wpp_test.jpg");
 	if(!bg_test){
-		SDL_Log("failed to load media: %s", SDL_GetError());
+		SDL_Log("failed to load media: %s", IMG_GetError());
 		code = EXIT_FAIL;
 	}
 
@@ -123,7 +131,12 @@ int main(int argc, char* argv[]){
 		/* check for input */
 		while(SDL_PollEvent(&e) != 0){
 			if(e.type == SDL_QUIT) quit = 1;
-			if(e.key.keysym.sym == SDLK_ESCAPE) quit = 1;
+
+			switch(e.key.type){
+				case SDL_KEYDOWN:
+					if(e.key.keysym.sym == SDLK_ESCAPE) quit = 1;
+					break;
+			}
 		}
 
 		/* render onto the framebuffer */
