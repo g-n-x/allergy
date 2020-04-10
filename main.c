@@ -10,6 +10,19 @@
 #define tex_load_failed(condition) \
 	if(condition){SDL_Log("failed to load media: %s",IMG_GetError());code=EXIT_FAIL;}
 
+typedef struct {
+	float frame_time;
+	int total_frames;
+	int current_frame;
+	SDL_Rect* frames;
+} Animation;
+
+typedef struct {
+	int x, y, speed;
+	SDL_Texture* tex;
+	Animation* animations;
+} ObjectInfo;
+
 enum EXIT_CODE {
 	EXIT_FAIL,
 	EXIT_OK
@@ -34,12 +47,24 @@ static SDL_Rect sli_idle[2];
 static SDL_Rect sli_walk[4];
 static SDL_Rect sli_jump[7];
 
+/* ObjectInfo */
+static ObjectInfo Sli;
+
 /* functions */
 static int init(void);
 static SDL_Texture* load_texture(const char* path);
+
+/* these two are possibly going to be replaced by some animation function */
 static inline void load_rectangle(SDL_Rect* r, int w, int sz); /* used to define the SDL_Rect vars */
 static void load_rects(void); /* used to group the load_rectangle() */
+
 static int load_media(void);
+
+/* object related functions */
+static void create_animation(ObjectInfo oi, int atlas_row, float frame_time); /* TODO */
+static void create_object(SDL_Texture* atlas, Animation* anim_set); /* TODO */
+static void load_objects(void);
+static int render_object(ObjectInfo* oi); /* TODO */
 static void deinit(void);
 
 int
@@ -87,7 +112,8 @@ FAIL_INIT:
 	return code;
 }
 
-inline void load_rectangle(SDL_Rect* r, int w, int sz){
+inline void
+load_rectangle(SDL_Rect* r, int w, int sz){
 	/* r is the rect to be modifying */
 	/* w speficy width of one frame in the atlas */
 	/* sz is for the array size */
@@ -144,6 +170,20 @@ load_media(void){
 }
 
 void
+load_objects(void){
+	Sli.x = 640;
+	Sli.y = 360;
+	Sli.speed = 4;
+}
+
+int
+render_object(ObjectInfo *oi){
+	int code = EXIT_OK;
+	SDL_RenderCopy(renderer, oi->tex, NULL, NULL);
+	return code;
+}
+
+void
 deinit(void){
 	SDL_DestroyRenderer(renderer);
 	renderer = NULL;
@@ -163,6 +203,7 @@ int main(int argc, char* argv[]){
 
 	if(!init()) goto FAIL_MAIN;
 	if(!load_media()) goto FAIL_LOAD_MEDIA;
+	load_objects();
 
 	/* game loop */
 	while(!quit){
@@ -194,6 +235,7 @@ int main(int argc, char* argv[]){
 		SDL_Log("frames: %d", frame_count);
 	}
 
+FAIL_LOAD_OBJECTS:
 FAIL_LOAD_MEDIA:
 FAIL_MAIN:
 	deinit();
