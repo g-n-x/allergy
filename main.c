@@ -15,14 +15,18 @@ static const int TARGET_FPS = 1000 / 60;
 static SDL_Renderer* renderer = NULL;
 static SDL_Window* window = NULL;
 
+/* textures */
+static SDL_Texture* bg_test = NULL;
+
 static int init(void);
+static SDL_Texture* load_texture(const char* path);
 static int load_media(void);
 static void deinit(void);
 
 int
 init(void){
 	int code = EXIT_OK;
-	Uint32 img_flags = IMG_INIT_PNG;
+	Uint32 img_flags = IMG_INIT_PNG | IMG_INIT_JPG;
 	Uint32 render_flags = SDL_RENDERER_ACCELERATED
 		| SDL_RENDERER_PRESENTVSYNC;
 
@@ -65,9 +69,29 @@ FAIL_INIT:
 	return code;
 }
 
+SDL_Texture*
+load_texture(const char* path){
+	SDL_Texture* new_tex = NULL;
+	SDL_Surface* tmp_surf = IMG_Load(path);
+
+	if(tmp_surf){
+		new_tex = SDL_CreateTextureFromSurface(renderer, tmp_surf);
+		SDL_FreeSurface(tmp_surf);
+	}
+
+	return new_tex;
+}
+
 int
 load_media(void){
 	int code = EXIT_OK;
+
+	bg_test = load_texture("res/test/wpp_test.jpg");
+	if(!bg_test){
+		SDL_Log("failed to load media: %s", SDL_GetError());
+		code = EXIT_FAIL;
+	}
+
 	return code;
 }
 
@@ -104,6 +128,7 @@ int main(int argc, char* argv[]){
 
 		/* render onto the framebuffer */
 		SDL_RenderClear(renderer);
+		SDL_RenderCopy(renderer, bg_test, NULL, NULL);
 		/* flip framebuffer */
 		SDL_RenderPresent(renderer);
 
