@@ -7,8 +7,11 @@
 #include<SDL2/SDL_image.h>
 #include<SDL2/SDL_ttf.h>
 
-#define tex_load_failed(condition) \
-	if(condition){SDL_Log("failed to load media: %s",IMG_GetError());code=EXIT_FAIL;}
+#define tex_load_failed(condition)                          \
+	if(condition){                                          \
+		SDL_Log("failed to load media: %s", IMG_GetError());\
+		code=EXIT_FAIL;                                     \
+	}
 
 typedef struct {
 	float frame_time;
@@ -43,25 +46,28 @@ static SDL_Texture* sli_atlas = NULL;
 static SDL_Texture* bg_test = NULL;
 
 /* rectangle arrays */
-static SDL_Rect sli_idle[2];
-static SDL_Rect sli_walk[4];
-static SDL_Rect sli_jump[7];
+//static SDL_Rect sli_idle[2];
+//static SDL_Rect sli_walk[4];
+//static SDL_Rect sli_jump[7];
 
 /* ObjectInfo */
 static ObjectInfo Sli;
+static Animation sli_idle;
+static Animation sli_walk;
+static Animation sli_jump;
 
 /* functions */
 static int init(void);
 static SDL_Texture* load_texture(const char* path);
 
 /* these two are possibly going to be replaced by some animation function */
-static inline void load_rectangle(SDL_Rect* r, int w, int sz); /* used to define the SDL_Rect vars */
-static void load_rects(void); /* used to group the load_rectangle() */
+// static inline void load_rectangle(SDL_Rect* r, int w, int sz); /* used to define the SDL_Rect vars */
+// static void load_rects(void); /* used to group the load_rectangle() */
 
 static int load_media(void);
 
 /* object related functions */
-static void create_animation(ObjectInfo oi, int atlas_row, float frame_time); /* TODO */
+static Animation create_animation(int total_frames, int atlas_row, int side_len, float frame_time);
 static void create_object(SDL_Texture* atlas, Animation* anim_set); /* TODO */
 static void load_objects(void);
 static int render_object(ObjectInfo* oi); /* TODO */
@@ -69,7 +75,6 @@ static void deinit(void);
 
 int
 init(void){
-	int code = EXIT_OK;
 	Uint32 img_flags = IMG_INIT_PNG | IMG_INIT_JPG;
 	Uint32 render_flags = SDL_RENDERER_ACCELERATED;
 
@@ -88,7 +93,7 @@ init(void){
 	renderer = SDL_CreateRenderer(window, -1, render_flags);
 	if(!renderer) goto FAIL_RENDERER;
 
-	return code; /* success */
+	return EXIT_OK; /* success */
 
 FAIL_RENDERER:
 	SDL_Log("failed to create renderer: %s", SDL_GetError());
@@ -108,34 +113,33 @@ FAIL_INIT:
 	SDL_Log("failed to init sdl: %s", SDL_GetError());
 	SDL_Quit();
 
-	code = EXIT_FAIL;
-	return code;
+	return EXIT_FAIL;
 }
 
-inline void
-load_rectangle(SDL_Rect* r, int w, int sz){
-	/* r is the rect to be modifying */
-	/* w speficy width of one frame in the atlas */
-	/* sz is for the array size */
-
-	for(int i = 0; i < sz; i++){
-		r[i].x += w * i;
-		r[i].y = 0;
-		r[i].w = w;
-		r[i].h = w;
-	}
-}
-
-void
-load_rects(void){
-	int i;
-	/* sli_idle 2 frames */
-	load_rectangle(sli_idle, 16, sizeof(sli_idle));
-	/* sli_walk 4 frames */
-	load_rectangle(sli_walk, 16, sizeof(sli_walk));
-	/* sli_jump 7 frames */
-	load_rectangle(sli_jump, 16, sizeof(sli_jump));
-}
+//inline void
+//load_rectangle(SDL_Rect* r, int w, int sz){
+//	/* r is the rect to be modifying */
+//	/* w speficy width of one frame in the atlas */
+//	/* sz is for the array size */
+//
+//	for(int i = 0; i < sz; i++){
+//		r[i].x += w * i;
+//		r[i].y = 0;
+//		r[i].w = w;
+//		r[i].h = w;
+//	}
+//}
+//
+//void
+//load_rects(void){
+//	int i;
+//	/* sli_idle 2 frames */
+//	load_rectangle(sli_idle, 16, sizeof(sli_idle));
+//	/* sli_walk 4 frames */
+//	load_rectangle(sli_walk, 16, sizeof(sli_walk));
+//	/* sli_jump 7 frames */
+//	load_rectangle(sli_jump, 16, sizeof(sli_jump));
+//}
 
 SDL_Texture*
 load_texture(const char* path){
@@ -169,11 +173,39 @@ load_media(void){
 	return code;
 }
 
+Animation
+create_animation(int total_frames, int atlas_row, int side_len, float frame_time){
+	/* total_frames: total frames in the row */
+	/* atlas_row:    which row of the atlas to create the animation from(not index 0 based) */
+	/* side_len:     side of the square of the sprite */
+	/* frame_time:   amount of the the frame will be shown */
+	SDL_Rect* rec_arr = (SDL_Rect*)malloc(sizeof(SDL_Rect) * total_frames);
+
+	for(int i = 0; i < total_frames; i++){
+		rec_arr[i].x = side_len * i;
+		rec_arr[i].y = side_len * (atlas_row - 1);
+		rec_arr[i].w = side_len;
+		rec_arr[i].h = side_len;
+	}
+
+	Animation anim;
+	anim.frame_time = frame_time;
+	anim.total_frames = total_frames;
+	anim.current_frame = 0;
+	anim.frames = rec_arr;
+
+	return anim;
+}
+
 void
 load_objects(void){
 	Sli.x = 640;
 	Sli.y = 360;
 	Sli.speed = 4;
+
+	sli_idle = create_animation(2, 1, 16, 5);
+	sli_jump = create_animation(7, 2, 16, 5);
+	sli_walk = create_animation(4, 3, 16, 5);
 }
 
 int
