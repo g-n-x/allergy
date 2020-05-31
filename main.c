@@ -45,11 +45,6 @@ static SDL_Surface* icon = NULL;
 static SDL_Texture* sli_atlas = NULL;
 static SDL_Texture* bg_test = NULL;
 
-/* rectangle arrays */
-//static SDL_Rect sli_idle[2];
-//static SDL_Rect sli_walk[4];
-//static SDL_Rect sli_jump[7];
-
 /* ObjectInfo */
 static ObjectInfo Sli;
 static Animation sli_idle;
@@ -60,15 +55,11 @@ static Animation sli_jump;
 static int init(void);
 static SDL_Texture* load_texture(const char* path);
 
-/* these two are possibly going to be replaced by some animation function */
-// static inline void load_rectangle(SDL_Rect* r, int w, int sz); /* used to define the SDL_Rect vars */
-// static void load_rects(void); /* used to group the load_rectangle() */
-
 static int load_media(void);
 
 /* object related functions */
 static Animation create_animation(int total_frames, int atlas_row, int side_len, float frame_time);
-static void create_object(SDL_Texture* atlas, Animation* anim_set); /* TODO */
+static ObjectInfo create_object(char* atlas_path, Animation* anim_set);
 static void load_objects(void);
 static int render_object(ObjectInfo* oi); /* TODO */
 static void deinit(void);
@@ -116,30 +107,6 @@ FAIL_INIT:
 	return EXIT_FAIL;
 }
 
-//inline void
-//load_rectangle(SDL_Rect* r, int w, int sz){
-//	/* r is the rect to be modifying */
-//	/* w speficy width of one frame in the atlas */
-//	/* sz is for the array size */
-//
-//	for(int i = 0; i < sz; i++){
-//		r[i].x += w * i;
-//		r[i].y = 0;
-//		r[i].w = w;
-//		r[i].h = w;
-//	}
-//}
-//
-//void
-//load_rects(void){
-//	int i;
-//	/* sli_idle 2 frames */
-//	load_rectangle(sli_idle, 16, sizeof(sli_idle));
-//	/* sli_walk 4 frames */
-//	load_rectangle(sli_walk, 16, sizeof(sli_walk));
-//	/* sli_jump 7 frames */
-//	load_rectangle(sli_jump, 16, sizeof(sli_jump));
-//}
 
 SDL_Texture*
 load_texture(const char* path){
@@ -197,15 +164,24 @@ create_animation(int total_frames, int atlas_row, int side_len, float frame_time
 	return anim;
 }
 
+ObjectInfo
+create_object(char* atlas_path, Animation* anim_set){
+	ObjectInfo oi;
+	oi.tex = load_texture(atlas_path);
+	oi.x = 0;
+	oi.y = 0;
+	oi.speed = 0;
+	oi.animations = anim_set;
+	return oi;
+}
+
 void
 load_objects(void){
-	Sli.x = 640;
-	Sli.y = 360;
-	Sli.speed = 4;
-
 	sli_idle = create_animation(2, 1, 16, 5);
 	sli_jump = create_animation(7, 2, 16, 5);
 	sli_walk = create_animation(4, 3, 16, 5);
+	Animation* set = (Animation*)malloc(sizeof(Animation)*3);
+	Sli = create_object("res/sli-atlas.png", set);
 }
 
 int
