@@ -32,10 +32,10 @@ enum EXIT_CODE {
 };
 
 static char* window_title = "sli";
-static const int SWIDTH = 1280;
-static const int SHEIGHT = 720;
+static const int SWIDTH = 1280; /* screen width */
+static const int SHEIGHT = 720; /* screen height */
 static const int TARGET_FPS = 1000 / 60; /* second per 60 frames */
-static const int GAME_SCALE = 5; /* multiply every render' scale by 5 */
+static const int GAME_SCALE = 25; /* multiply every render' scale by 5 */
 
 static SDL_Renderer* renderer = NULL;
 static SDL_Window* window = NULL;
@@ -61,16 +61,19 @@ static int load_media(void);
 static Animation create_animation(int total_frames, int atlas_row, int side_len, float frame_time);
 static ObjectInfo create_object(char* atlas_path, Animation* anim_set);
 static void load_objects(void);
-static int render_object(ObjectInfo* oi); /* TODO */
+static int update_object(ObjectInfo* oi);
+static int render_object(ObjectInfo* oi, int anim_index);
 static void deinit(void);
 
+/* yes init func */
 int
 init(void){
+	Uint32 sdl_flags = SDL_INIT_VIDEO;
 	Uint32 img_flags = IMG_INIT_PNG | IMG_INIT_JPG;
 	Uint32 render_flags = SDL_RENDERER_ACCELERATED;
 
 	/* sdl subsystems */
-	if(SDL_Init(SDL_INIT_VIDEO) != 0) goto FAIL_INIT;
+	if(SDL_Init(sdl_flags) != 0) goto FAIL_INIT;
 	if(!(IMG_Init(img_flags) & img_flags)) goto FAIL_IMG;
 	if(TTF_Init() == -1) goto FAIL_TTF;
 
@@ -145,7 +148,7 @@ create_animation(int total_frames, int atlas_row, int side_len, float frame_time
 	/* total_frames: total frames in the row */
 	/* atlas_row:    which row of the atlas to create the animation from(not index 0 based) */
 	/* side_len:     side of the square of the sprite */
-	/* frame_time:   amount of the the frame will be shown */
+	/* frame_time:   amount of time the frame will be shown */
 	SDL_Rect* rec_arr = (SDL_Rect*)malloc(sizeof(SDL_Rect) * total_frames);
 
 	for(int i = 0; i < total_frames; i++){
@@ -177,17 +180,42 @@ create_object(char* atlas_path, Animation* anim_set){
 
 void
 load_objects(void){
-	sli_idle = create_animation(2, 1, 16, 5);
-	sli_jump = create_animation(7, 2, 16, 5);
-	sli_walk = create_animation(4, 3, 16, 5);
+	sli_idle = create_animation(2, 1, 16, 30);
+	sli_jump = create_animation(7, 3, 16, 10);
+	sli_walk = create_animation(4, 2, 16, 10);
 	Animation* set = (Animation*)malloc(sizeof(Animation)*3);
+	set[0] = sli_idle;
+	set[1] = sli_jump;
+	set[2] = sli_walk;
 	Sli = create_object("res/sli-atlas.png", set);
 }
 
 int
-render_object(ObjectInfo *oi){
+render_object(ObjectInfo *oi, int anim_index){
 	int code = EXIT_OK;
-	SDL_RenderCopy(renderer, oi->tex, NULL, NULL);
+
+	static int current_frame_time = 0;
+	static int curr_frame = 0; //oi->animations[anim_index].current_frame;
+
+	SDL_Rect dst = {
+		.x = oi->x,
+		.y = oi->y,
+		.w = oi->animations[anim_index].frames[curr_frame].w * GAME_SCALE,
+		.h = oi->animations[anim_index].frames[curr_frame].h * GAME_SCALE
+	};
+
+	current_frame_time++;
+	if(current_frame_time >= oi->animations[anim_index].frame_time) {
+		current_frame_time = 0;
+		curr_frame++;
+	}
+
+	if(curr_frame > oi->animations[anim_index].total_frames -1) {
+		curr_frame = 0;
+	}
+
+	// actual rendering
+	SDL_RenderCopy(renderer, oi->tex, &(oi->animations[anim_index].frames[curr_frame]), &dst);
 	return code;
 }
 
@@ -221,21 +249,35 @@ int main(int argc, char* argv[]){
 		while(SDL_PollEvent(&e) != 0){
 			if(e.type == SDL_QUIT) quit = 1;
 
-			switch(e.key.type){
-				case SDL_KEYDOWN:
-					if(e.key.keysym.sym == SDLK_ESCAPE) quit = 1;
-					break;
-			}
+			if(e.type == SDL_KEYDOWN)
+				switch(e.key.keysym.sym) {
+					case SDLK_ESCAPE:
+						quit = 1;
+						break;
+					// case SDLK_RIGHT:
+					// 	Sli.x += 1;
+					// 	break;
+				}
+		}
+
+		int toRender = 0;
+		const Uint8* keyState = SDL_GetKeyboardState(NULL);
+		if(keyState[SDL_SCANCODE_RIGHT]){
+			toRender = 2;
+			Sli.x +=5;
 		}
 
 		/* render onto the framebuffer */
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer, bg_test, NULL, NULL);
 
+		/* render nice objects */
+		render_object(&Sli, toRender);
+
 		/* flip framebuffer */
 		SDL_RenderPresent(renderer);
 
-		/* delta frame (actually, no) */
+		/* delta frame (well... yes, but actually, no) */
 		delta = SDL_GetTicks() - delta;
 		if(delta < TARGET_FPS)
 			SDL_Delay(TARGET_FPS - delta);
