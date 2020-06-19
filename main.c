@@ -16,8 +16,8 @@
 typedef struct {
 	float frame_time;
 	int total_frames;
-	int current_frame;
-	SDL_Rect* frames;
+	int current_frame; /* useless */
+	SDL_Rect* frames; /* maybe replace with some math shit */
 } Animation;
 
 typedef struct {
@@ -195,16 +195,8 @@ render_object(ObjectInfo *oi, int anim_index){
 	int code = EXIT_OK;
 
 	static int current_frame_time = 0;
-	static int curr_frame = 0; //oi->animations[anim_index].current_frame;
+	static int curr_frame = 0;
 
-	SDL_Rect dst = {
-		.x = oi->x,
-		.y = oi->y,
-		.w = oi->animations[anim_index].frames[curr_frame].w * GAME_SCALE,
-		.h = oi->animations[anim_index].frames[curr_frame].h * GAME_SCALE
-	};
-
-	current_frame_time++;
 	if(current_frame_time >= oi->animations[anim_index].frame_time) {
 		current_frame_time = 0;
 		curr_frame++;
@@ -214,8 +206,16 @@ render_object(ObjectInfo *oi, int anim_index){
 		curr_frame = 0;
 	}
 
+	SDL_Rect dst = {
+		.x = oi->x,
+		.y = oi->y,
+		.w = oi->animations[anim_index].frames[curr_frame].w * GAME_SCALE,
+		.h = oi->animations[anim_index].frames[curr_frame].h * GAME_SCALE
+	};
+
 	// actual rendering
 	SDL_RenderCopy(renderer, oi->tex, &(oi->animations[anim_index].frames[curr_frame]), &dst);
+	current_frame_time++;
 	return code;
 }
 
@@ -264,7 +264,12 @@ int main(int argc, char* argv[]){
 		const Uint8* keyState = SDL_GetKeyboardState(NULL);
 		if(keyState[SDL_SCANCODE_RIGHT]){
 			toRender = 2;
-			Sli.x +=5;
+			Sli.x += 5;
+		}
+
+		if(keyState[SDL_SCANCODE_LEFT]){
+			toRender = 2;
+			Sli.x -= 5;
 		}
 
 		/* render onto the framebuffer */
