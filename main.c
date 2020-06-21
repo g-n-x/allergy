@@ -62,7 +62,7 @@ static Animation create_animation(int total_frames, int atlas_row, int side_len,
 static ObjectInfo create_object(char* atlas_path, Animation* anim_set);
 static void load_objects(void);
 static int update_object(ObjectInfo* oi);
-static int render_object(ObjectInfo* oi, int anim_index);
+static int render_object(ObjectInfo* oi, int anim_index, int inverted);
 static void deinit(void);
 
 /* yes init func */
@@ -188,10 +188,11 @@ load_objects(void){
 	set[1] = sli_jump;
 	set[2] = sli_walk;
 	Sli = create_object("res/sli-atlas.png", set);
+	Sli.speed = 5;
 }
 
 int
-render_object(ObjectInfo *oi, int anim_index){
+render_object(ObjectInfo *oi, int anim_index, int inverted){
 	int code = EXIT_OK;
 
 	static int current_frame_time = 0;
@@ -214,7 +215,10 @@ render_object(ObjectInfo *oi, int anim_index){
 	};
 
 	// actual rendering
-	SDL_RenderCopy(renderer, oi->tex, &(oi->animations[anim_index].frames[curr_frame]), &dst);
+	if(inverted)
+		SDL_RenderCopyEx(renderer, oi->tex, &(oi->animations[anim_index].frames[curr_frame]), &dst, 0, NULL, SDL_FLIP_HORIZONTAL);
+	else
+		SDL_RenderCopy(renderer, oi->tex, &(oi->animations[anim_index].frames[curr_frame]), &dst);
 	current_frame_time++;
 	return code;
 }
@@ -234,6 +238,7 @@ deinit(void){
 int main(int argc, char* argv[]){
 	int quit = 0;
 	int frame_count = 0;
+	int inverted = 0;
 	Uint32 delta;
 	SDL_Event e;
 
@@ -262,22 +267,25 @@ int main(int argc, char* argv[]){
 
 		int toRender = 0;
 		const Uint8* keyState = SDL_GetKeyboardState(NULL);
-		if(keyState[SDL_SCANCODE_RIGHT]){
+		int mov = keyState[SDL_SCANCODE_RIGHT] - keyState[SDL_SCANCODE_LEFT];
+		int hsp = Sli.speed * mov;
+
+		if(hsp > 0) {
 			toRender = 2;
-			Sli.x += 5;
+			inverted = 0;
+		} else if(hsp < 0) {
+			toRender = 2;
+			inverted = 1;
 		}
 
-		if(keyState[SDL_SCANCODE_LEFT]){
-			toRender = 2;
-			Sli.x -= 5;
-		}
+		Sli.x += hsp;
 
 		/* render onto the framebuffer */
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer, bg_test, NULL, NULL);
 
 		/* render nice objects */
-		render_object(&Sli, toRender);
+		render_object(&Sli, toRender, inverted);
 
 		/* flip framebuffer */
 		SDL_RenderPresent(renderer);
