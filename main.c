@@ -35,7 +35,7 @@ static char* window_title = "sli";
 static const int SWIDTH = 1280; /* screen width */
 static const int SHEIGHT = 720; /* screen height */
 static const int TARGET_FPS = 1000 / 60; /* second per 60 frames */
-static const int GAME_SCALE = 25; /* multiply every render' scale by 5 */
+static const int GAME_SCALE = 10; /* multiply every render' scale by 5 */
 
 static SDL_Renderer* renderer = NULL;
 static SDL_Window* window = NULL;
@@ -137,7 +137,7 @@ load_media(void){
 	sli_atlas = load_texture("res/sli-atlas.png");
 	tex_load_failed(!sli_atlas);
 
-	bg_test = load_texture("res/test/wpp_test.jpg");
+	bg_test = load_texture("res/test/tmp-bg.png");
 	tex_load_failed(!bg_test);
 
 	return code;
@@ -189,6 +189,7 @@ load_objects(void){
 	set[2] = sli_walk;
 	Sli = create_object("res/sli-atlas.png", set);
 	Sli.speed = 5;
+	Sli.y = 41*GAME_SCALE;
 }
 
 int
