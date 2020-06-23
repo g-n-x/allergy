@@ -313,8 +313,8 @@ int main(int argc, char* argv[]){
 
 		/* create camera */
 		SDL_Rect camera = {
-			.x = (Sli.x + 8) - ((CAM_WIDTH/10) / 2),
-			.y = (Sli.y + 8) - ((CAM_HEIGHT/10) / 2),
+			.x = (Sli.x - 16) - ((CAM_WIDTH/10) / 2),
+			.y = (Sli.y + 16) - ((CAM_HEIGHT/10) / 2),
 			.w = CAM_WIDTH/10,
 			.h = CAM_HEIGHT/10
 		};
