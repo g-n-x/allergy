@@ -14,6 +14,12 @@
 	}
 
 typedef struct {
+	int x;
+	int y;
+	int zoom;
+} Camera;
+
+typedef struct {
 	float frame_time;
 	int total_frames;
 	int current_frame; /* useless */
@@ -36,6 +42,12 @@ static const int SWIDTH = 1280; /* screen width */
 static const int SHEIGHT = 720; /* screen height */
 static const int TARGET_FPS = 1000 / 60; /* second per 60 frames */
 static const int GAME_SCALE = 10; /* multiply every render' scale by 5 */
+
+/* temporary level stuff */
+static const int CAM_WIDTH = 640;
+static const int CAM_HEIGHT = 360;
+static int xcam = 0;
+static int ycam = 0;
 
 static SDL_Renderer* renderer = NULL;
 static SDL_Window* window = NULL;
@@ -180,16 +192,20 @@ create_object(char* atlas_path, Animation* anim_set){
 
 void
 load_objects(void){
+
+	/* Sli */
 	sli_idle = create_animation(2, 1, 16, 30);
 	sli_jump = create_animation(7, 3, 16, 10);
 	sli_walk = create_animation(4, 2, 16, 10);
+
 	Animation* set = (Animation*)malloc(sizeof(Animation)*3);
 	set[0] = sli_idle;
 	set[1] = sli_jump;
 	set[2] = sli_walk;
+
 	Sli = create_object("res/sli-atlas.png", set);
-	Sli.speed = 5;
-	Sli.y = 41*GAME_SCALE;
+	Sli.speed = 1;
+	Sli.y = 46;
 }
 
 int
@@ -209,10 +225,10 @@ render_object(ObjectInfo *oi, int anim_index, int inverted){
 	}
 
 	SDL_Rect dst = {
-		.x = oi->x,
-		.y = oi->y,
-		.w = oi->animations[anim_index].frames[curr_frame].w * GAME_SCALE,
-		.h = oi->animations[anim_index].frames[curr_frame].h * GAME_SCALE
+		.x = (oi->x - xcam) * GAME_SCALE,
+		.y = (oi->y - ycam) * GAME_SCALE,
+		.w = oi->animations[anim_index].frames[curr_frame].w * GAME_SCALE * 2,
+		.h = oi->animations[anim_index].frames[curr_frame].h * GAME_SCALE * 2
 	};
 
 	// actual rendering
@@ -240,6 +256,8 @@ int main(int argc, char* argv[]){
 	int quit = 0;
 	int frame_count = 0;
 	int inverted = 0;
+	int grav = 1;
+	int vsp = 0;
 	Uint32 delta;
 	SDL_Event e;
 
@@ -269,6 +287,7 @@ int main(int argc, char* argv[]){
 		int toRender = 0;
 		const Uint8* keyState = SDL_GetKeyboardState(NULL);
 		int mov = keyState[SDL_SCANCODE_RIGHT] - keyState[SDL_SCANCODE_LEFT];
+		int jmp = keyState[SDL_SCANCODE_SPACE];
 		int hsp = Sli.speed * mov;
 
 		if(hsp > 0) {
@@ -279,11 +298,39 @@ int main(int argc, char* argv[]){
 			inverted = 1;
 		}
 
-		Sli.x += hsp;
+//		if(Sli.y + 15 <= 57 * GAME_SCALE) {
+//			vsp += grav;
+//		} else {
+//			grav = 0;
+//			vsp = 0;
+//			if(jmp) {
+//				vsp = -10;
+//			}
+//		}
 
+		Sli.x += hsp;
+		Sli.y += vsp;
+
+		/* create camera */
+		SDL_Rect camera = {
+			.x = (Sli.x + 8) - ((CAM_WIDTH/10) / 2),
+			.y = (Sli.y + 8) - ((CAM_HEIGHT/10) / 2),
+			.w = CAM_WIDTH/10,
+			.h = CAM_HEIGHT/10
+		};
+
+		/* keep the camera in bounds */
+		if(camera.x < 0) camera.x = 0;
+		if(camera.y < 0) camera.y = 0;
+		if(camera.x + camera.w > 256) camera.x = 256 - camera.w;
+		if(camera.y + camera.h > 72) camera.y = 72 - camera.h;
+
+		xcam = camera.x;
+		ycam = camera.y;
+		
 		/* render onto the framebuffer */
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, bg_test, NULL, NULL);
+		SDL_RenderCopy(renderer, bg_test, &camera, NULL);
 
 		/* render nice objects */
 		render_object(&Sli, toRender, inverted);
@@ -296,7 +343,7 @@ int main(int argc, char* argv[]){
 		if(delta < TARGET_FPS)
 			SDL_Delay(TARGET_FPS - delta);
 		frame_count++;
-		SDL_Log("frames: %d", frame_count);
+		// SDL_Log("frames: %d", frame_count);
 	}
 
 FAIL_LOAD_OBJECTS:
