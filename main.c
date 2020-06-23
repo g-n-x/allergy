@@ -27,7 +27,7 @@ typedef struct {
 } Animation;
 
 typedef struct {
-	int x, y, speed;
+	float x, y, speed;
 	SDL_Texture* tex;
 	Animation* animations;
 } ObjectInfo;
@@ -44,8 +44,8 @@ static const int TARGET_FPS = 1000 / 60; /* second per 60 frames */
 static const int GAME_SCALE = 10; /* multiply every render' scale by 5 */
 
 /* temporary level stuff */
-static const int CAM_WIDTH = 640;
-static const int CAM_HEIGHT = 360;
+static const int CAM_WIDTH = 1280;
+static const int CAM_HEIGHT = 720;
 static int xcam = 0;
 static int ycam = 0;
 
@@ -227,8 +227,8 @@ render_object(ObjectInfo *oi, int anim_index, int inverted){
 	SDL_Rect dst = {
 		.x = (oi->x - xcam) * GAME_SCALE,
 		.y = (oi->y - ycam) * GAME_SCALE,
-		.w = oi->animations[anim_index].frames[curr_frame].w * GAME_SCALE * 2,
-		.h = oi->animations[anim_index].frames[curr_frame].h * GAME_SCALE * 2
+		.w = oi->animations[anim_index].frames[curr_frame].w * GAME_SCALE,
+		.h = oi->animations[anim_index].frames[curr_frame].h * GAME_SCALE
 	};
 
 	// actual rendering
@@ -256,8 +256,8 @@ int main(int argc, char* argv[]){
 	int quit = 0;
 	int frame_count = 0;
 	int inverted = 0;
-	int grav = 1;
-	int vsp = 0;
+	float grav = 0.08f;
+	float vsp = 0.0f;
 	Uint32 delta;
 	SDL_Event e;
 
@@ -298,15 +298,15 @@ int main(int argc, char* argv[]){
 			inverted = 1;
 		}
 
-//		if(Sli.y + 15 <= 57 * GAME_SCALE) {
-//			vsp += grav;
-//		} else {
-//			grav = 0;
-//			vsp = 0;
-//			if(jmp) {
-//				vsp = -10;
-//			}
-//		}
+		if(Sli.y + 4 <= 46) {
+			toRender = 1;
+			vsp += grav;
+		} else {
+			vsp = 0;
+			if(jmp) {
+				vsp = -2.0f;
+			}
+		}
 
 		Sli.x += hsp;
 		Sli.y += vsp;
