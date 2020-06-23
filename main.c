@@ -212,8 +212,12 @@ int
 render_object(ObjectInfo *oi, int anim_index, int inverted){
 	int code = EXIT_OK;
 
+	static int last_anim = 0;
 	static int current_frame_time = 0;
 	static int curr_frame = 0;
+
+	if(last_anim != anim_index) curr_frame = 0;
+	last_anim = anim_index;
 
 	if(current_frame_time >= oi->animations[anim_index].frame_time) {
 		current_frame_time = 0;
