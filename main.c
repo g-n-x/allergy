@@ -3,6 +3,7 @@
  * 1. an animation spritesheet must have only 1 row
  * 2. all sprites must be squares (at least for now)
  */
+
 #include<SDL2/SDL.h>
 #include<SDL2/SDL_image.h>
 #include<SDL2/SDL_ttf.h>
@@ -32,12 +33,17 @@ typedef struct {
 	Animation* animations;
 } ObjectInfo;
 
+typedef struct LinkedList_ObjectInfo {
+	struct LinkedList_ObjectInfo * next;
+	ObjectInfo * data;
+} ObjectList;
+
 enum EXIT_CODE {
 	EXIT_FAIL,
 	EXIT_OK
 };
 
-static char* window_title = "sli";
+static char* const window_title = "sli";
 static const int SWIDTH = 1280; /* screen width */
 static const int SHEIGHT = 720; /* screen height */
 static const int TARGET_FPS = 1000 / 60; /* second per 60 frames */
@@ -46,8 +52,10 @@ static const int GAME_SCALE = 10; /* multiply every render' scale by 5 */
 /* temporary level stuff */
 static const int CAM_WIDTH = 1280;
 static const int CAM_HEIGHT = 720;
+static const int CAM_SCALE = SWIDTH / CAM_WIDTH;
 static int xcam = 0;
 static int ycam = 0;
+static ObjectInfo objects[100];
 
 static SDL_Renderer* renderer = NULL;
 static SDL_Window* window = NULL;
@@ -58,6 +66,7 @@ static SDL_Texture* sli_atlas = NULL;
 static SDL_Texture* bg_test = NULL;
 
 /* ObjectInfo */
+static ObjectList* object_list = NULL;
 static ObjectInfo Sli;
 static Animation sli_idle;
 static Animation sli_walk;
@@ -66,8 +75,9 @@ static Animation sli_jump;
 /* functions */
 static int init(void);
 static SDL_Texture* load_texture(const char* path);
-
 static int load_media(void);
+static void deinit(void);
+static void insert_object(ObjectList** root, ObjectInfo* object);
 
 /* object related functions */
 static Animation create_animation(int total_frames, int atlas_row, int side_len, float frame_time);
@@ -75,7 +85,6 @@ static ObjectInfo create_object(char* atlas_path, Animation* anim_set);
 static void load_objects(void);
 static int update_object(ObjectInfo* oi);
 static int render_object(ObjectInfo* oi, int anim_index, int inverted);
-static void deinit(void);
 
 /* yes init func */
 int
@@ -190,9 +199,37 @@ create_object(char* atlas_path, Animation* anim_set){
 	return oi;
 }
 
+
+void
+insert_object(ObjectList** root, ObjectInfo* object) {
+	ObjectList** tmp = root;
+	ObjectList* new = (ObjectList*)malloc(sizeof(ObjectList));
+	new->data = object;
+	new->next = NULL;
+
+	if(*tmp == NULL) {
+		*tmp = new;
+		return;
+	}
+
+	while((*tmp)->next)
+		*tmp = (*tmp)->next;
+	(*tmp)->next = new;
+}
+
+/* this is problematic pls send help */
+void print_obj_list(ObjectList* root) {
+	int i = 0;
+	ObjectList* tmp = root;
+	while(tmp) {
+		tmp = tmp->next;
+		++i;
+	}
+	printf("i looped %d times\n", i);
+}
+
 void
 load_objects(void){
-
 	/* Sli */
 	sli_idle = create_animation(2, 1, 16, 30);
 	sli_jump = create_animation(7, 3, 16, 10);
@@ -205,7 +242,9 @@ load_objects(void){
 
 	Sli = create_object("res/sli-atlas.png", set);
 	Sli.speed = 1;
-	Sli.y = 46;
+	Sli.y = 41;
+
+	insert_object(&object_list, &Sli);
 }
 
 int
@@ -231,8 +270,8 @@ render_object(ObjectInfo *oi, int anim_index, int inverted){
 	SDL_Rect dst = {
 		.x = (oi->x - xcam) * GAME_SCALE,
 		.y = (oi->y - ycam) * GAME_SCALE,
-		.w = oi->animations[anim_index].frames[curr_frame].w * GAME_SCALE,
-		.h = oi->animations[anim_index].frames[curr_frame].h * GAME_SCALE
+		.w = oi->animations[anim_index].frames[curr_frame].w * GAME_SCALE * CAM_SCALE,
+		.h = oi->animations[anim_index].frames[curr_frame].h * GAME_SCALE * CAM_SCALE
 	};
 
 	// actual rendering
@@ -241,6 +280,11 @@ render_object(ObjectInfo *oi, int anim_index, int inverted){
 	else
 		SDL_RenderCopy(renderer, oi->tex, &(oi->animations[anim_index].frames[curr_frame]), &dst);
 	current_frame_time++;
+
+#if GAME_DEBUG
+	SDL_SetRenderDrawColor(renderer, 0xFF, 0, 0, 0xFF);
+	SDL_RenderDrawRect(renderer, &dst);
+#endif
 	return code;
 }
 
@@ -269,6 +313,7 @@ int main(int argc, char* argv[]){
 	if(!load_media()) goto FAIL_LOAD_MEDIA;
 	load_objects();
 
+	print_obj_list(object_list);
 	/* game loop */
 	while(!quit){
 
@@ -282,9 +327,6 @@ int main(int argc, char* argv[]){
 					case SDLK_ESCAPE:
 						quit = 1;
 						break;
-					// case SDLK_RIGHT:
-					// 	Sli.x += 1;
-					// 	break;
 				}
 		}
 
@@ -350,7 +392,6 @@ int main(int argc, char* argv[]){
 		// SDL_Log("frames: %d", frame_count);
 	}
 
-FAIL_LOAD_OBJECTS:
 FAIL_LOAD_MEDIA:
 FAIL_MAIN:
 	deinit();
