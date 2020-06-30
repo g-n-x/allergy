@@ -15,8 +15,7 @@
 	}
 
 typedef struct {
-	int x;
-	int y;
+	SDL_Rect rect;
 	int zoom;
 } Camera;
 
@@ -47,14 +46,13 @@ static char* const window_title = "sli";
 static const int SWIDTH = 1280; /* screen width */
 static const int SHEIGHT = 720; /* screen height */
 static const int TARGET_FPS = 1000 / 60; /* second per 60 frames */
-static const int GAME_SCALE = 10; /* multiply every render' scale by 5 */
+static const int GAME_SCALE = 10; /* multiply every render' scale by 10 */
 
 /* temporary level stuff */
-static const int CAM_WIDTH = 1280;
-static const int CAM_HEIGHT = 720;
+static const int CAM_WIDTH = 640;
+static const int CAM_HEIGHT = 360;
 static const int CAM_SCALE = SWIDTH / CAM_WIDTH;
-static int xcam = 0;
-static int ycam = 0;
+static Camera gamera;
 static ObjectInfo objects[100];
 
 static SDL_Renderer* renderer = NULL;
@@ -91,6 +89,7 @@ int
 init(void){
 	Uint32 sdl_flags = SDL_INIT_VIDEO;
 	Uint32 img_flags = IMG_INIT_PNG | IMG_INIT_JPG;
+	Uint32 window_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
 	Uint32 render_flags = SDL_RENDERER_ACCELERATED;
 
 	/* sdl subsystems */
@@ -101,7 +100,7 @@ init(void){
 	/* create window */
 	window = SDL_CreateWindow(window_title,
 			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-			SWIDTH, SHEIGHT, SDL_WINDOW_SHOWN);
+			SWIDTH, SHEIGHT, window_flags);
 	if(!window) goto FAIL_WINDOW;
 
 	/* create renderer */
@@ -242,7 +241,7 @@ load_objects(void){
 
 	Sli = create_object("res/sli-atlas.png", set);
 	Sli.speed = 1;
-	Sli.y = 41;
+	Sli.y = 31;
 
 	insert_object(&object_list, &Sli);
 }
@@ -251,7 +250,7 @@ int
 render_object(ObjectInfo *oi, int anim_index, int inverted){
 	int code = EXIT_OK;
 
-	static int last_anim = 0;
+	static int last_anim = 0; /* this breaks every other object's animation */
 	static int current_frame_time = 0;
 	static int curr_frame = 0;
 
@@ -268,8 +267,8 @@ render_object(ObjectInfo *oi, int anim_index, int inverted){
 	}
 
 	SDL_Rect dst = {
-		.x = (oi->x - xcam) * GAME_SCALE,
-		.y = (oi->y - ycam) * GAME_SCALE,
+		.x = (oi->x - gamera.rect.x) * GAME_SCALE * CAM_SCALE,
+		.y = (oi->y - gamera.rect.y) * GAME_SCALE * CAM_SCALE,
 		.w = oi->animations[anim_index].frames[curr_frame].w * GAME_SCALE * CAM_SCALE,
 		.h = oi->animations[anim_index].frames[curr_frame].h * GAME_SCALE * CAM_SCALE
 	};
@@ -309,11 +308,16 @@ int main(int argc, char* argv[]){
 	Uint32 delta;
 	SDL_Event e;
 
+	/* init camera */
+	gamera.rect.x = 0;
+	gamera.rect.y = 0;
+	gamera.rect.w = CAM_WIDTH/GAME_SCALE;
+	gamera.rect.h = CAM_HEIGHT/GAME_SCALE;
+
 	if(!init()) goto FAIL_MAIN;
 	if(!load_media()) goto FAIL_LOAD_MEDIA;
 	load_objects();
 
-	print_obj_list(object_list);
 	/* game loop */
 	while(!quit){
 
@@ -344,7 +348,7 @@ int main(int argc, char* argv[]){
 			inverted = 1;
 		}
 
-		if(Sli.y + 4 <= 46) {
+		if(Sli.y + 16 <= 57) {
 			toRender = 1;
 			vsp += grav;
 		} else {
@@ -357,26 +361,25 @@ int main(int argc, char* argv[]){
 		Sli.x += hsp;
 		Sli.y += vsp;
 
-		/* create camera */
-		SDL_Rect camera = {
-			.x = (Sli.x - 16) - ((CAM_WIDTH/10) / 2),
-			.y = (Sli.y + 16) - ((CAM_HEIGHT/10) / 2),
-			.w = CAM_WIDTH/10,
-			.h = CAM_HEIGHT/10
-		};
+		gamera.rect.x = (Sli.x + 8) - (CAM_WIDTH/GAME_SCALE/2);
+		gamera.rect.y = (Sli.y + 8) - (CAM_HEIGHT/GAME_SCALE/2);
 
 		/* keep the camera in bounds */
-		if(camera.x < 0) camera.x = 0;
-		if(camera.y < 0) camera.y = 0;
-		if(camera.x + camera.w > 256) camera.x = 256 - camera.w;
-		if(camera.y + camera.h > 72) camera.y = 72 - camera.h;
+		if(gamera.rect.x < 0) gamera.rect.x = 0;
+		if(gamera.rect.y < 0) gamera.rect.y = 0;
+		if(gamera.rect.x + gamera.rect.w > 256) gamera.rect.x = 256 - gamera.rect.w;
+		if(gamera.rect.y + gamera.rect.h > 72) gamera.rect.y = 72 - gamera.rect.h;
 
-		xcam = camera.x;
-		ycam = camera.y;
-		
+		SDL_Rect bg_dst = {
+			.x = 0,
+			.y = 0,
+			.w = gamera.rect.w * GAME_SCALE * CAM_SCALE,
+			.h = gamera.rect.h * GAME_SCALE * CAM_SCALE
+		};
+
 		/* render onto the framebuffer */
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, bg_test, &camera, NULL);
+		SDL_RenderCopy(renderer, bg_test, &gamera.rect, &bg_dst);
 
 		/* render nice objects */
 		render_object(&Sli, toRender, inverted);
@@ -390,6 +393,15 @@ int main(int argc, char* argv[]){
 			SDL_Delay(TARGET_FPS - delta);
 		frame_count++;
 		// SDL_Log("frames: %d", frame_count);
+		
+		/* print renderer rect */
+		SDL_Rect rrect;
+		SDL_RenderGetViewport(renderer, &rrect);
+		SDL_Log("x%d y%d w%d h%d",
+				rrect.x,
+				rrect.y,
+				rrect.w,
+				rrect.h);
 	}
 
 FAIL_LOAD_MEDIA:
