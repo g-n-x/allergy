@@ -395,13 +395,13 @@ int main(int argc, char* argv[]){
 		// SDL_Log("frames: %d", frame_count);
 		
 		/* print renderer rect */
-		SDL_Rect rrect;
-		SDL_RenderGetViewport(renderer, &rrect);
-		SDL_Log("x%d y%d w%d h%d",
-				rrect.x,
-				rrect.y,
-				rrect.w,
-				rrect.h);
+		//SDL_Rect rrect;
+		//SDL_RenderGetViewport(renderer, &rrect);
+		//SDL_Log("x%d y%d w%d h%d",
+		//		rrect.x,
+		//		rrect.y,
+		//		rrect.w,
+		//		rrect.h);
 	}
 
 FAIL_LOAD_MEDIA:
