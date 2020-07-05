@@ -54,6 +54,7 @@ static const int CAM_HEIGHT = 360;
 static const int CAM_SCALE = SWIDTH / CAM_WIDTH;
 static Camera gamera;
 static ObjectInfo objects[100];
+static int map0_matrix[10][20];
 
 static SDL_Renderer* renderer = NULL;
 static SDL_Window* window = NULL;
@@ -76,6 +77,8 @@ static SDL_Texture* load_texture(const char* path);
 static int load_media(void);
 static void deinit(void);
 static void insert_object(ObjectList** root, ObjectInfo* object);
+/* map related stuff */
+static int parse_csv(const char* filepath, int row, int col, int map_file[row][col]);
 
 /* object related functions */
 static Animation create_animation(int total_frames, int atlas_row, int side_len, float frame_time);
@@ -163,6 +166,32 @@ load_media(void){
 	return code;
 }
 
+int
+parse_csv(const char* filepath, int row, int col, int map_matrix[row][col]) {
+	FILE* map_file = fopen(filepath, "r");
+	int result;
+	int value;
+	for(int r = 0; r < row; ++r)
+		for(int c = 0; c < col; ++c) {
+			printf("%ld\n", ftell(map_file));
+			result = fscanf(map_file, "%d[^,\n]", &value);
+			if(result == 0) {
+				fscanf(map_file, "%*c");
+				c--; /* hackish way to implement something i found on stackoverflow ;3 */
+			}
+			else
+				map_matrix[r][c] = value;
+		}
+
+	for(int r = 0; r < row; ++r) {
+		for(int c = 0; c < col; ++c)
+			printf("%d ", map_matrix[r][c]);
+		puts("");
+	}
+
+	fclose(map_file);
+}
+
 Animation
 create_animation(int total_frames, int atlas_row, int side_len, float frame_time){
 	/* total_frames: total frames in the row */
@@ -244,6 +273,9 @@ load_objects(void){
 	Sli.y = 31;
 
 	insert_object(&object_list, &Sli);
+
+	/* parse map into array */
+	parse_csv("./res/maps/allergy0.csv", 10, 20, map0_matrix);
 }
 
 int
