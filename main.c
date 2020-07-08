@@ -171,23 +171,17 @@ parse_csv(const char* filepath, int row, int col, int map_matrix[row][col]) {
 	FILE* map_file = fopen(filepath, "r");
 	int result;
 	int value;
+
 	for(int r = 0; r < row; ++r)
 		for(int c = 0; c < col; ++c) {
-			printf("%ld\n", ftell(map_file));
 			result = fscanf(map_file, "%d[^,\n]", &value);
 			if(result == 0) {
-				fscanf(map_file, "%*c");
+				fseek(map_file, 1, SEEK_CUR);
 				c--; /* hackish way to implement something i found on stackoverflow ;3 */
 			}
 			else
 				map_matrix[r][c] = value;
 		}
-
-	for(int r = 0; r < row; ++r) {
-		for(int c = 0; c < col; ++c)
-			printf("%d ", map_matrix[r][c]);
-		puts("");
-	}
 
 	fclose(map_file);
 }
