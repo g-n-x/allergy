@@ -47,7 +47,7 @@ static char* const window_title = "sli";
 static const int SWIDTH = 1280; /* screen width */
 static const int SHEIGHT = 720; /* screen height */
 static const int TARGET_FPS = 1000 / 60; /* second per 60 frames */
-static const int GAME_SCALE = 10; /* multiply every render' scale by 10 */
+static const int GAME_SCALE = 10; /* multiply every render' scale by a factor of 10 */
 
 /* temporary level stuff */
 static const int CAM_WIDTH = 640;
@@ -80,6 +80,7 @@ static void deinit(void);
 static void insert_object(ObjectList** root, ObjectInfo* object);
 /* map related stuff */
 static int parse_csv(const char* filepath, int row, int col, int map_file[row][col]);
+static int render_map(int row, int col, map_matrix[row][col]);
 
 /* object related functions */
 static Animation create_animation(int total_frames, int atlas_row, int side_len, float frame_time);
@@ -184,6 +185,14 @@ parse_csv(const char* filepath, int row, int col, int map_matrix[row][col]) {
 				map_matrix[r][c] = value;
 		}
 
+#if GAME_DEBUG
+	for(int r = 0; r < row; r++) {
+		for(int c = 0; c < col; c++) {
+			printf("%d ", map_matrix[r][c]);
+		}
+		puts("");
+	}
+#endif
 	fclose(map_file);
 }
 
