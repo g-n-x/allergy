@@ -8,10 +8,11 @@
 #include<SDL2/SDL_image.h>
 #include<SDL2/SDL_ttf.h>
 
-#define tex_load_failed(condition)                          \
-	if(condition){                                          \
-		SDL_Log("failed to load media: %s", IMG_GetError());\
-		code=EXIT_FAIL;                                     \
+#define tex_load_failed(condition)          \
+	if(condition){                          \
+		SDL_Log("failed to load media: %s", \
+				IMG_GetError());            \
+		code=EXIT_FAIL;                     \
 	}
 
 typedef struct {
@@ -74,7 +75,7 @@ static Animation sli_jump;
 /* functions */
 static int init(void);
 static SDL_Texture* load_texture(const char* path);
-static int load_media(void);
+static int load_resources(void);
 static void deinit(void);
 static void insert_object(ObjectList** root, ObjectInfo* object);
 /* map related stuff */
@@ -148,7 +149,7 @@ load_texture(const char* path){
 }
 
 int
-load_media(void){
+load_resources(void){
 	int code = EXIT_OK;
 
 	/* icon */
@@ -341,7 +342,7 @@ int main(int argc, char* argv[]){
 	gamera.rect.h = CAM_HEIGHT/GAME_SCALE;
 
 	if(!init()) goto FAIL_MAIN;
-	if(!load_media()) goto FAIL_LOAD_MEDIA;
+	if(!load_resources()) goto FAIL_LOAD_MEDIA;
 	load_objects();
 
 	/* game loop */
@@ -424,10 +425,10 @@ int main(int argc, char* argv[]){
 		//SDL_Rect rrect;
 		//SDL_RenderGetViewport(renderer, &rrect);
 		//SDL_Log("x%d y%d w%d h%d",
-		//		rrect.x,
-		//		rrect.y,
-		//		rrect.w,
-		//		rrect.h);
+		//	rrect.x,
+		//	rrect.y,
+		//	rrect.w,
+		//	rrect.h);
 	}
 
 FAIL_LOAD_MEDIA:
