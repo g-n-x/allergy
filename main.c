@@ -21,6 +21,11 @@ typedef struct {
 } Camera;
 
 typedef struct {
+	SDL_Texture* tex;
+	int w, h;
+} Text;
+
+typedef struct {
 	float frame_time;
 	int total_frames;
 	int current_frame; /* useless */
@@ -47,14 +52,14 @@ static char* const window_title = "sli";
 static const int SWIDTH = 1280; /* screen width */
 static const int SHEIGHT = 720; /* screen height */
 static const int TARGET_FPS = 1000 / 60; /* second per 60 frames */
-static const int GAME_SCALE = 10; /* multiply every render' scale by a factor of 10 */
+static const int GAME_SCALE = 5; /* multiply every render' scale by a factor of 10 */
 
 /* temporary level stuff */
 static const int CAM_WIDTH = 640;
 static const int CAM_HEIGHT = 360;
 static const int CAM_SCALE = SWIDTH / CAM_WIDTH;
 static Camera gamera;
-static ObjectInfo objects[100];
+// static ObjectInfo objects[100];
 static int map0_matrix[10][20];
 
 static SDL_Renderer* renderer = NULL;
@@ -64,6 +69,11 @@ static SDL_Surface* icon = NULL;
 /* textures */
 static SDL_Texture* sli_atlas = NULL;
 static SDL_Texture* bg_test = NULL;
+
+/* font */
+TTF_Font* std_fnt = NULL;
+/* static text */
+Text* press_play = NULL;
 
 /* ObjectInfo */
 static ObjectList* object_list = NULL;
@@ -80,13 +90,15 @@ static void deinit(void);
 static void insert_object(ObjectList** root, ObjectInfo* object);
 /* map related stuff */
 static int parse_csv(const char* filepath, int row, int col, int map_file[row][col]);
-static int render_map(int row, int col, map_matrix[row][col]);
+/* font related stuff */
+static Text* create_text(TTF_Font* fnt, char* str, SDL_Color color);
+static void render_text(int x, int y, int scale, Text* text);
 
 /* object related functions */
 static Animation create_animation(int total_frames, int atlas_row, int side_len, float frame_time);
 static ObjectInfo create_object(char* atlas_path, Animation* anim_set);
 static void load_objects(void);
-static int update_object(ObjectInfo* oi);
+// static int update_object(ObjectInfo* oi);
 static int render_object(ObjectInfo* oi, int anim_index, int inverted);
 
 /* yes init func */
@@ -153,6 +165,13 @@ int
 load_resources(void){
 	int code = EXIT_OK;
 
+	/* font */
+	std_fnt = TTF_OpenFont("./res/fnt/FreeSerif.ttf", 92);
+	if(std_fnt == NULL) {
+		puts("failed to load std_fnt font");
+		code = EXIT_FAIL;
+	}
+
 	/* icon */
 	icon = IMG_Load("res/test/icon.png");
 	tex_load_failed(!icon) else
@@ -171,6 +190,9 @@ load_resources(void){
 int
 parse_csv(const char* filepath, int row, int col, int map_matrix[row][col]) {
 	FILE* map_file = fopen(filepath, "r");
+	if(map_file == NULL) {
+		return 0;
+	}
 	int result;
 	int value;
 
@@ -194,6 +216,30 @@ parse_csv(const char* filepath, int row, int col, int map_matrix[row][col]) {
 	}
 #endif
 	fclose(map_file);
+	return 1;
+}
+
+Text
+*create_text(TTF_Font *fnt, char* str, SDL_Color color) {
+	Text* new_text = (Text*)malloc(sizeof(Text));
+	SDL_Surface* tmp = TTF_RenderText_Solid(fnt, str, color);
+
+	new_text->tex = SDL_CreateTextureFromSurface(renderer, tmp);
+	new_text->w = tmp->w;
+	new_text->h = tmp->h;
+
+	SDL_FreeSurface(tmp);
+	return new_text;
+}
+
+void
+render_text(int x, int y, int scale, Text* text) {
+	SDL_Rect dst = {
+		x, y,
+		text->w * scale,
+		text->h * scale
+	};
+	SDL_RenderCopy(renderer, text->tex, NULL, &dst);
 }
 
 Animation
@@ -262,6 +308,11 @@ void print_obj_list(ObjectList* root) {
 
 void
 load_objects(void){
+	SDL_Color color;
+	/* create static text */
+	color.r = 0x00; color.g = 0x00; color.b = 0x00; color.a = 0xFF;
+	press_play = create_text(std_fnt, "Click to start", color);
+
 	/* Sli */
 	sli_idle = create_animation(2, 1, 16, 30);
 	sli_jump = create_animation(7, 3, 16, 10);
@@ -325,6 +376,11 @@ render_object(ObjectInfo *oi, int anim_index, int inverted){
 
 void
 deinit(void){
+	/* fonts */
+	TTF_CloseFont(std_fnt);
+	std_fnt = NULL;
+
+	/* renderer and window */
 	SDL_DestroyRenderer(renderer);
 	renderer = NULL;
 	SDL_DestroyWindow(window);
@@ -415,7 +471,14 @@ int main(int argc, char* argv[]){
 
 		/* render onto the framebuffer */
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, bg_test, &gamera.rect, &bg_dst);
+		SDL_RenderCopy(renderer, bg_test, &gamera.rect, &bg_dst); // background
+		//int w2, h2;
+		//SDL_QueryTexture(press_play, NULL, NULL, &w2, &h2);
+		//SDL_Rect click = {
+		//	0, 0, w2 ,h2
+		//};
+		//SDL_RenderCopy(renderer, press_play, NULL, &click); // press play
+		render_text(400, 50, 1, press_play); // render press play
 
 		/* render nice objects */
 		render_object(&Sli, toRender, inverted);
